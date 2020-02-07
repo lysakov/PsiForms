@@ -8,7 +8,7 @@ class IGenerator
 {
 
   public:
-    virtual std::shared_ptr<ZZ_mat<mpz_t>> getForm() = 0;
+    virtual ZZ_mat<mpz_t> getForm() = 0;
 
 };
 

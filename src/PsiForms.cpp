@@ -8,51 +8,6 @@
 
 
 
-PsiFormGenerator::CoxeterFormCode operator++(PsiFormGenerator::CoxeterFormCode &code) noexcept
-{
-
-    switch (code) {
-    case PsiFormGenerator::FORM_A:
-        code = PsiFormGenerator::FORM_A_ASTR;
-        break;
-
-    case PsiFormGenerator::FORM_A_ASTR:
-        code = PsiFormGenerator::FORM_D;
-        break;
-
-    case PsiFormGenerator::FORM_D:
-        code = PsiFormGenerator::FORM_D_ASTR;
-        break;
-
-    case PsiFormGenerator::FORM_D_ASTR:
-        code = PsiFormGenerator::FORM_E;
-        break;
-
-    case PsiFormGenerator::FORM_E:
-        code = PsiFormGenerator::FORM_E7_ASTR;
-        break;
-
-    case PsiFormGenerator::FORM_E7_ASTR:
-        code = PsiFormGenerator::FORM_E8_ASTR;
-        break;
-
-    case PsiFormGenerator::FORM_E8_ASTR:
-        code = PsiFormGenerator::FORM_E9_ASTR;
-        break;
-
-    case PsiFormGenerator::FORM_E9_ASTR:
-        code = PsiFormGenerator::FORM_A;
-        break;
-
-    default:
-        code = PsiFormGenerator::FORM_E;
-        break;
-    }
-
-    return code;
-
-}
-
 PsiFormGenerator::PsiFormGenerator(int n) : _n(n)
 {
 
@@ -60,7 +15,7 @@ PsiFormGenerator::PsiFormGenerator(int n) : _n(n)
 
 }
 
-std::shared_ptr<ZZ_mat<mpz_t>> PsiFormGenerator::getForm()
+ZZ_mat<mpz_t> PsiFormGenerator::getForm()
 {
 
     return decltype(getForm())();
@@ -144,7 +99,7 @@ void PsiFormGenerator::test()
         std::cout << code << std::endl;
     }
 
-    std::vector<int> partition = {15, 9};
+    std::vector<int> partition = {15, 9, 8, 7, 6};
     PsiFormStore substate(&partition);
 
     for (auto i = substate.begin(); i != substate.end(); ++i) {
@@ -172,7 +127,7 @@ _partition(partition)
 }
 
 PsiFormGenerator::PsiFormIterator::PsiFormIterator(const std::vector<int> *partition, 
-const std::vector<PsiFormGenerator::CoxeterFormCode> &state) noexcept :
+const std::vector<CoxeterFormCode> &state) noexcept :
 _state(state), _partition(partition)
 {}
 
@@ -281,7 +236,7 @@ PsiFormGenerator::PsiFormIterator PsiFormGenerator::PsiFormStore::begin() noexce
 PsiFormGenerator::PsiFormIterator PsiFormGenerator::PsiFormStore::end() noexcept
 {
 
-    std::vector<PsiFormGenerator::CoxeterFormCode> state(_partition->size());
+    std::vector<CoxeterFormCode> state(_partition->size());
 
     for (auto &code : state) {
         code = FORM_NULL;
