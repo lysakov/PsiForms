@@ -2,9 +2,9 @@
 
 
 
-/**********************************
- * Increment operator realization *
- **********************************/
+/*******************************************
+ * CoxeterFormCode's operators realization *
+ *******************************************/
 
 
 
@@ -50,6 +50,51 @@ CoxeterFormCode operator++(CoxeterFormCode &code) noexcept
     }
 
     return code;
+
+}
+
+std::ostream& operator<<(std::ostream &str, const CoxeterFormCode &code)
+{
+
+    switch (code) {
+    case FORM_A:
+        str << "A";
+        break;
+
+    case FORM_A_ASTR:
+        str << "A*";
+        break;
+
+    case FORM_D:
+        str << "D";
+        break;
+
+    case FORM_D_ASTR:
+        str << "D*";
+        break;
+
+    case FORM_E:
+        str << "E";
+        break;
+
+    case FORM_E7_ASTR:
+        str << "E*_7";
+        break;
+
+    case FORM_E8_ASTR:
+        str << "E*_8";
+        break;
+
+    case FORM_E9_ASTR:
+        str << "E*_9";
+        break;
+
+    default:
+        str << "NULL";
+        break;
+    }
+
+    return str;
 
 }
 
@@ -106,6 +151,13 @@ ZZ_mat<mpz_t> CoxeterFormGenerator::getForm()
     default:
         return _getA(1);
     }
+
+}
+
+bool CoxeterFormGenerator::empty() const noexcept
+{
+
+    return _genList.empty();
 
 }
 

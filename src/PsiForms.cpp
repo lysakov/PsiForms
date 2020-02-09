@@ -8,17 +8,72 @@
 
 
 
-PsiFormGenerator::PsiFormGenerator(int n) : _n(n)
+PsiFormGenerator::PsiFormGenerator(int n) : _n(n), _store({}), _iter(nullptr)
 {
 
+    if (n <= 0) {
+        throw std::runtime_error("Impossible to generate psi forms in space with this dimension.");
+    }
+
     _initStack();
+    _load();
 
 }
 
 ZZ_mat<mpz_t> PsiFormGenerator::getForm()
 {
 
-    return decltype(getForm())();
+    decltype(getForm()) result;
+
+    Logger::writeLine("**************************");
+    
+    if (_iter != _store.end()) {
+        result = *_iter;
+        ++_cnt;
+
+        Logger::writeLine("--------------------------");
+        Logger::writeLine(*_iter._partition);
+        Logger::writeLine(_iter._state);
+        Logger::writeLine("--------------------------");
+
+        ++_iter;
+    }
+    else {
+        if (_partitions.empty()) {
+            return result;
+        }
+
+        _load();
+
+        result = *_iter;
+        ++_cnt;
+
+        Logger::writeLine("--------------------------");
+        Logger::writeLine(*_iter._partition);
+        Logger::writeLine(_iter._state);
+        Logger::writeLine("--------------------------");
+
+        ++_iter;
+    }
+
+    Logger::writeLine(result);
+    Logger::writeLine("**************************");
+
+    return result;
+
+}
+
+bool PsiFormGenerator::empty() const noexcept
+{
+
+    return _partitions.empty() && _iter == _store.end();
+
+}
+
+unsigned long long PsiFormGenerator::count() const noexcept
+{
+
+    return _cnt;
 
 }
 
@@ -84,26 +139,25 @@ void PsiFormGenerator::_initStack() noexcept
 
 }
 
+void PsiFormGenerator::_load()
+{
+
+    _store = PsiFormStore(_partitions.back());
+    _partitions.pop_back();
+
+    _iter = _store.begin();
+
+}
+
 void PsiFormGenerator::test()
 {
 
-    std::cout << _partitions.size() << std::endl;
+    std::vector<int> partition = {4, 3, 5};
+    PsiFormStore store(partition);
 
-    for(const auto &vec : _partitions) {
-        std::cout << vec << std::endl;
-    }
-
-    CoxeterFormCode code = FORM_A;
-    for (int i = 0; i < 9; ++i) {
-        ++code;
-        std::cout << code << std::endl;
-    }
-
-    std::vector<int> partition = {15, 9, 8, 7, 6};
-    PsiFormStore substate(&partition);
-
-    for (auto i = substate.begin(); i != substate.end(); ++i) {
-        std::cout << i._state << std::endl;
+    for (auto psiForm : store) {
+        std::cout << psiForm << std::endl;
+        //std::cin.get();
     }
 
 }
@@ -119,6 +173,10 @@ void PsiFormGenerator::test()
 PsiFormGenerator::PsiFormIterator::PsiFormIterator(const std::vector<int> *partition) noexcept :
 _partition(partition)
 {
+
+    if (partition == nullptr) {
+        return;
+    }
     
     for (unsigned long i = 0; i < partition->size(); ++i) {
         _state.push_back(FORM_A);
@@ -131,14 +189,27 @@ const std::vector<CoxeterFormCode> &state) noexcept :
 _state(state), _partition(partition)
 {}
 
+ZZ_mat<mpz_t> PsiFormGenerator::PsiFormIterator::operator*() const noexcept
+{
+
+    CoxeterFormGenerator generator(_state, *_partition);
+
+    ZZ_mat<mpz_t> result;
+
+    while (!generator.empty()) {
+        _glew(result, generator.getForm());
+    }
+
+    return result;
+
+}
+
 PsiFormGenerator::PsiFormIterator& PsiFormGenerator::PsiFormIterator::operator++() noexcept
 {
 
-    CoxeterFormCode oldLast = _state.back();
     _increaseComponet(0);
-    CoxeterFormCode newLast = _state.back();
 
-    if (oldLast != newLast && newLast == FORM_A) {
+    if (_end) {
         for (auto &code : _state) {
             code = FORM_NULL;
         }
@@ -209,8 +280,31 @@ void PsiFormGenerator::PsiFormIterator::_increaseComponet(unsigned long i)
         _state[i] = FORM_A;
     }
 
-    if (i < _state.size() - 1 && _state[i] == FORM_A) {
-        _increaseComponet(i + 1);
+    if (_state[i] == FORM_A) {
+        if  (i < _state.size() - 1) {
+            _increaseComponet(i + 1);
+        }
+        else {
+            _end = true;
+        }
+    }
+
+}
+
+void PsiFormGenerator::PsiFormIterator::_glew(ZZ_mat<mpz_t> &A, const ZZ_mat<mpz_t> &B) const noexcept
+{
+
+    unsigned long oldRowsNum = A.get_rows();
+    unsigned long oldColsNum = A.get_cols();
+
+    A.resize(oldRowsNum + B.get_rows(), oldColsNum + B.get_cols());
+
+    /* TODO: fill elements outside blocks A and B with zeroes */
+
+    for (unsigned long i = 0; i < static_cast<unsigned long>(B.get_rows()); ++i) {
+        for (unsigned long j = 0; j < static_cast<unsigned long>(B.get_cols()); ++j) {
+            A[oldRowsNum + i][oldColsNum + j] = B[i][j];
+        }
     }
 
 }
@@ -222,26 +316,26 @@ void PsiFormGenerator::PsiFormIterator::_increaseComponet(unsigned long i)
  *********************************/
 
 
-PsiFormGenerator::PsiFormStore::PsiFormStore(const std::vector<int> *partition) noexcept :
+PsiFormGenerator::PsiFormStore::PsiFormStore(const std::vector<int> &partition) noexcept :
 _partition(partition)
 {}
 
-PsiFormGenerator::PsiFormIterator PsiFormGenerator::PsiFormStore::begin() noexcept
+PsiFormGenerator::PsiFormIterator PsiFormGenerator::PsiFormStore::begin() const noexcept
 {
 
-    return PsiFormIterator(_partition);
+    return PsiFormIterator(const_cast<const std::vector<int>*>(&_partition));
 
 }
 
-PsiFormGenerator::PsiFormIterator PsiFormGenerator::PsiFormStore::end() noexcept
+PsiFormGenerator::PsiFormIterator PsiFormGenerator::PsiFormStore::end() const noexcept
 {
 
-    std::vector<CoxeterFormCode> state(_partition->size());
+    std::vector<CoxeterFormCode> state(_partition.size());
 
     for (auto &code : state) {
         code = FORM_NULL;
     }
 
-    return PsiFormIterator(_partition, state);
+    return PsiFormIterator(const_cast<const std::vector<int>*>(&_partition), state);
 
 }

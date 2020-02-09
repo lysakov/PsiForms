@@ -7,6 +7,7 @@
 #include "generator.hpp"
 #include "CoxeterForms.hpp"
 #include "iterator.hpp"
+#include "Logger.hpp"
 
 /* Factory, which produces psi forms. */
 class PsiFormGenerator : public IGenerator
@@ -17,14 +18,88 @@ class PsiFormGenerator : public IGenerator
      * @param n - space dimension */
     explicit PsiFormGenerator(int n);
 
-    /* @brief Method getForm() returns pointer to the next psi form. */
+    /* @brief Method getForm() returns next psi form.
+     * @returns psi form. */
     virtual ZZ_mat<mpz_t> getForm() override;
+
+    /* @brief Method checks whether all psi forms are enumerated. *
+     * @returns true, if all psi forms in given dimension are not enumerated. */
+    bool empty() const noexcept override;
+
+    /* @brief method counts number of generated psi forms
+     * @returns number of created psi forms */
+    unsigned long long count() const noexcept;
 
     void test();
 
   private:
+    /* TODO: make PsiFormIterator inner class of PsiFormStore */
+    /* Class PsiFormIterator is used for iterating over PsiFormStore. */
+    class PsiFormIterator
+    {
+
+      public:
+        explicit PsiFormIterator(const std::vector<int> *partition) noexcept;
+
+        PsiFormIterator(const std::vector<int> *partition, 
+        const std::vector<CoxeterFormCode> &state) noexcept;
+
+        ZZ_mat<mpz_t> operator*() const noexcept;
+
+        PsiFormIterator& operator++() noexcept;
+        
+        bool operator==(const PsiFormIterator &iter) const noexcept;
+
+        bool operator!=(const PsiFormIterator &iter) const noexcept;
+
+      private:
+
+        std::vector<CoxeterFormCode> _state;
+
+        const std::vector<int> *_partition;
+
+        /* Method declared friend for logging purpouses */
+        friend ZZ_mat<mpz_t> PsiFormGenerator::getForm();
+
+        /* _end = true, if iterator points to the end of store */
+        bool _end = false;
+
+        /* Increases i-th component of vector _state */
+        void _increaseComponet(unsigned long i);
+
+        /* _glew(...) - creates block diagonal matrix, where first block corresponds to A and
+        * second - to B. */
+        void _glew(ZZ_mat<mpz_t> &A, const ZZ_mat<mpz_t> &B) const noexcept;
+
+    };
+
+    /* Class PsiFormStore stores all psi forms, coresponding to the given partition. */
+    class PsiFormStore : public IIterable<PsiFormIterator>
+    {
+
+      public:
+        explicit PsiFormStore(const std::vector<int> &partition) noexcept;
+
+        virtual PsiFormIterator begin() const noexcept override;
+
+        virtual PsiFormIterator end() const noexcept override;
+
+      private:
+        std::vector<int> _partition;
+
+    };
+
     /* Space dimension */
     int _n = 0;
+
+    /* _store stores all psi forms corresponding to the given partition */
+    PsiFormStore _store;
+
+    /* _iter points to the current psi form in _store */
+    PsiFormIterator _iter;
+
+    /* Psi form counter */
+    unsigned long long _cnt = 0;
 
     /* Partition stack */
     std::vector<std::vector<int>> _partitions;
@@ -40,55 +115,11 @@ class PsiFormGenerator : public IGenerator
     /* _initStack() - initializes the partittion stack. */
     void _initStack() noexcept;
 
-    /* Class PsiFormStore stores all psi forms, coresponding to the given partition. */
-    class PsiFormStore;
-
-    /* Class PsiFormIterator is used for iterating over PsiFormStore. */
-    class PsiFormIterator;
+    /* _load() loads next partition in _store and sets _iter */
+    void _load();
 
 };
 
-class PsiFormGenerator::PsiFormIterator
-{
 
-  public:
-    explicit PsiFormIterator(const std::vector<int> *partition) noexcept;
-
-    PsiFormIterator(const std::vector<int> *partition, 
-    const std::vector<CoxeterFormCode> &state) noexcept;
-
-    ZZ_mat<mpz_t> operator*() const noexcept;
-
-    PsiFormIterator& operator++() noexcept;
-    
-    bool operator==(const PsiFormIterator &iter) const noexcept;
-
-    bool operator!=(const PsiFormIterator &iter) const noexcept;
-
-    /* Increases i-th component of vector _state */
-    void _increaseComponet(unsigned long i);
-
-    std::vector<CoxeterFormCode> _state;
-
-  private:
-
-    const std::vector<int> *_partition;
-
-};
-
-class PsiFormGenerator::PsiFormStore : public IIterable<PsiFormGenerator::PsiFormIterator>
-{
-
-  public:
-    PsiFormStore(const std::vector<int> *partition) noexcept;
-
-    PsiFormIterator begin() noexcept;
-
-    PsiFormIterator end() noexcept;
-
-  private:
-    const std::vector<int> *_partition;
-
-};
 
 #endif

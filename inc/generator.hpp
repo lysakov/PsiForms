@@ -9,6 +9,7 @@ class IGenerator
 
   public:
     virtual ZZ_mat<mpz_t> getForm() = 0;
+    virtual bool empty() const noexcept = 0;
 
 };
 

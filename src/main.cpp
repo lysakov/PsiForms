@@ -4,16 +4,23 @@
 #include "PsiForms.hpp"
 #include "generator.hpp"
 #include "enumerator.hpp"
+#include "Logger.hpp"
 
 int main()
 {
-    PsiFormGenerator gen(15);
-    gen.test();
-    CoxeterFormGenerator coxGen({FORM_A, FORM_D, FORM_E9_ASTR}, {1, 10, 9});
 
-    for  (int i = 0; i < 3; ++i) {
-        std::cout << coxGen.getForm() << std::endl;
+    PsiFormGenerator gen(15);
+
+    Logger::init();
+
+    while (!gen.empty()) {
+        gen.getForm();
     }
 
+    Logger::writeLine("==========================");
+    Logger::writeLine("Total: " + std::to_string(gen.count()) + " psi forms");
+    Logger::writeLine("==========================");
+
     return 0;
+
 }

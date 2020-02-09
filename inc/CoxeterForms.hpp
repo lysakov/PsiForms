@@ -21,6 +21,10 @@ enum CoxeterFormCode {
  * @param code - object of class CoxeterFormCode to be increased */
 CoxeterFormCode operator++(CoxeterFormCode &code) noexcept;
 
+/* @brief prints code of Coxeter form to output stream str
+ * @returns output stream str */
+std::ostream& operator<<(std::ostream &str, const CoxeterFormCode &code);
+
 /* Factory, which produces Coxeter forms */
 class CoxeterFormGenerator : public IGenerator
 {
@@ -33,6 +37,9 @@ class CoxeterFormGenerator : public IGenerator
 
     /* @brief Method getForm() returns pointer to the next Coxeter form. */
     virtual ZZ_mat<mpz_t> getForm() override;
+
+    /* @brief Method checks whether all Coxeter forms are enumerated */
+    bool empty() const noexcept override;
 
   private:
     /* List of Coxeter forms codes to be generated. */
