@@ -33,6 +33,12 @@ class Logger
 
     }
 
+    /* @brief writes an empty file in to log file */
+    static void writeLine()
+    {
+        (*_logFile) << std::endl;
+    }
+
     Logger(const Logger &logger) = delete;
 
     Logger& operator=(const Logger &logger) = delete;

@@ -26,7 +26,8 @@ ${SOURCE_DIR}/PsiForms.cpp
 ${SOURCE_DIR}/enumerator.cpp
 ${SOURCE_DIR}/generator.cpp
 ${SOURCE_DIR}/CoxeterForms.cpp
-${SOURCE_DIR}/Logger.cpp)
+${SOURCE_DIR}/Logger.cpp
+${SOURCE_DIR}/utils.cpp)
 
 #Searching for libraries
 find_library(FPLLL_LIB fplll)

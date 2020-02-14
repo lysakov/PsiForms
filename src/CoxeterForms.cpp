@@ -161,6 +161,50 @@ bool CoxeterFormGenerator::empty() const noexcept
 
 }
 
+unsigned long CoxeterFormGenerator::delta(CoxeterFormCode form, unsigned long dim) noexcept
+{
+
+    switch(form) {
+    case FORM_A:
+        return dim;
+    
+    case FORM_A_ASTR:
+        return dim;
+
+    case FORM_D:
+        return 2 * dim - 3;
+
+    case FORM_D_ASTR:
+        return 2 * dim - 4;
+
+    case FORM_E:
+        if (dim == 6) {
+            return 10;
+        }
+
+        if (dim == 7) {
+            return 17;
+        }
+
+        if (dim == 8) {
+            return 29;
+        }
+
+    case FORM_E7_ASTR:
+        return 12;
+
+    case FORM_E8_ASTR:
+        return 18;
+
+    case FORM_E9_ASTR:
+        return 30;
+
+    default:
+        return 0;
+    }
+
+}
+
 void CoxeterFormGenerator::_extend(ZZ_mat<mpz_t> &A) const
 {
 
@@ -216,8 +260,7 @@ ZZ_mat<mpz_t> CoxeterFormGenerator::_getA(unsigned long n) const noexcept
 ZZ_mat<mpz_t> CoxeterFormGenerator::_getAAstr(unsigned long n) const noexcept
 {
 
-    auto result = _getA(n - 1);
-    _extend(result);
+    auto result = _getA(n);
 
     result[0][n - 1] = -1;
     result[n - 1][0] = -1;

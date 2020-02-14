@@ -4,6 +4,7 @@
 #include <fplll.h>
 #include <memory>
 #include <iostream>
+#include "utils.hpp"
 
 class ISVPAlg
 {
@@ -11,6 +12,8 @@ class ISVPAlg
   public:
     virtual std::vector<Z_NR<mpz_t>> getShortestVector(ZZ_mat<mpz_t> &A) = 0;
     virtual std::vector<std::vector<Z_NR<mpz_t>>> getAllShortestVectors(ZZ_mat<mpz_t> &A) = 0;
+    virtual Z_NR<mpz_t> getSquaredLength(ZZ_mat<mpz_t> &A) = 0;
+    virtual unsigned long getShortestVectorsNum(ZZ_mat<mpz_t> &A) = 0;
 
 };
 
@@ -21,8 +24,11 @@ class BasisSVP : public ISVPAlg
     BasisSVP() {}
     virtual std::vector<Z_NR<mpz_t>> getShortestVector(ZZ_mat<mpz_t> &A) override;
     virtual std::vector<std::vector<Z_NR<mpz_t>>> getAllShortestVectors(ZZ_mat<mpz_t> &A) override;
+    virtual Z_NR<mpz_t> getSquaredLength(ZZ_mat<mpz_t> &A) override;
+    virtual unsigned long getShortestVectorsNum(ZZ_mat<mpz_t> &A) override;
+
   private:
-    std::vector<Z_NR<mpz_t>> transformCoord(const std::vector<Z_NR<mpz_t>> &coord, const ZZ_mat<mpz_t> &A) noexcept;
+    std::vector<Z_NR<mpz_t>> _transformCoord(const std::vector<Z_NR<mpz_t>> &coord, const ZZ_mat<mpz_t> &A) noexcept;
 
 };
 
@@ -33,6 +39,11 @@ class GramSVP : public ISVPAlg
     GramSVP() {}
     virtual std::vector<Z_NR<mpz_t>> getShortestVector(ZZ_mat<mpz_t> &A) override;
     virtual std::vector<std::vector<Z_NR<mpz_t>>> getAllShortestVectors(ZZ_mat<mpz_t> &A) override;
+    virtual Z_NR<mpz_t> getSquaredLength(ZZ_mat<mpz_t> &A) override;
+    virtual unsigned long getShortestVectorsNum(ZZ_mat<mpz_t> &A) override;
+
+  private:
+    ZZ_mat<mpz_t>& _LLL(ZZ_mat<mpz_t> &A);
 
 };
 
@@ -40,12 +51,15 @@ class Enumerator
 {
 
   public:
-    Enumerator(const ZZ_mat<mpz_t> &A, ISVPAlg &&svpAlg);
+    Enumerator(const ZZ_mat<mpz_t> &A, const std::shared_ptr<ISVPAlg> &svpAlg);
     std::vector<Z_NR<mpz_t>> getShortestVector();
     std::vector<std::vector<Z_NR<mpz_t>>> getAllShortestVectors();
+    Z_NR<mpz_t> getSquaredLength();
+    unsigned long getShortestVectorsNum();
+
   private:
-    ZZ_mat<mpz_t> A;
-    ISVPAlg *svpAlg;
+    ZZ_mat<mpz_t> _A;
+    std::shared_ptr<ISVPAlg> _svpAlg;
 
 };
 

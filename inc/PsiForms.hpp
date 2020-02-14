@@ -4,10 +4,12 @@
 #include <iostream>
 #include <stack>
 #include <vector>
+#include <algorithm>
 #include "generator.hpp"
 #include "CoxeterForms.hpp"
 #include "iterator.hpp"
 #include "Logger.hpp"
+#include "utils.hpp"
 
 /* Factory, which produces psi forms. */
 class PsiFormGenerator : public IGenerator
@@ -69,7 +71,10 @@ class PsiFormGenerator : public IGenerator
 
         /* _glew(...) - creates block diagonal matrix, where first block corresponds to A and
         * second - to B. */
-        void _glew(ZZ_mat<mpz_t> &A, const ZZ_mat<mpz_t> &B) const noexcept;
+        ZZ_mat<mpz_t>& _glew(ZZ_mat<mpz_t> &A, const ZZ_mat<mpz_t> &B) const noexcept;
+
+        /* _excludeVar(...) - excludes n + 1 - th  variable from form */
+        ZZ_mat<mpz_t>& _excludeVar(ZZ_mat<mpz_t> &A) const noexcept;
 
     };
 
@@ -99,7 +104,7 @@ class PsiFormGenerator : public IGenerator
     PsiFormIterator _iter;
 
     /* Psi form counter */
-    unsigned long long _cnt = 0;
+    unsigned long long _cnt = 1;
 
     /* Partition stack */
     std::vector<std::vector<int>> _partitions;
@@ -117,6 +122,12 @@ class PsiFormGenerator : public IGenerator
 
     /* _load() loads next partition in _store and sets _iter */
     void _load();
+
+    /* _isValid(...) checks whether psi form, corresponding to the given state vector, exists. */
+    static bool _isValid(const std::vector<CoxeterFormCode> &state, const std::vector<int> &dim) noexcept;
+
+    /* _isPositive(...) checks whether matrix A is positive defined. */
+    bool _isPositive(ZZ_mat<mpz_t> A) const noexcept;
 
 };
 

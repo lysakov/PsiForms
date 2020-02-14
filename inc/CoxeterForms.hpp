@@ -41,6 +41,12 @@ class CoxeterFormGenerator : public IGenerator
     /* @brief Method checks whether all Coxeter forms are enumerated */
     bool empty() const noexcept override;
 
+    /* @brief method counts the value of delta function
+     * @param form - code of the Coxeter form
+     * @param dim - form dimension
+     * @returns value of delta function */
+    static unsigned long delta(CoxeterFormCode form, unsigned long dim) noexcept;
+
   private:
     /* List of Coxeter forms codes to be generated. */
     std::vector<CoxeterFormCode> _genList;

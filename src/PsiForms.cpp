@@ -8,7 +8,7 @@
 
 
 
-PsiFormGenerator::PsiFormGenerator(int n) : _n(n), _store({}), _iter(nullptr)
+PsiFormGenerator::PsiFormGenerator(int n) : _n(n + 1), _store({}), _iter(nullptr)
 {
 
     if (n <= 0) {
@@ -20,23 +20,52 @@ PsiFormGenerator::PsiFormGenerator(int n) : _n(n), _store({}), _iter(nullptr)
 
 }
 
+/* TODO: REFACTOR THIS FUNCTION */
 ZZ_mat<mpz_t> PsiFormGenerator::getForm()
 {
 
     decltype(getForm()) result;
 
-    Logger::writeLine("**************************");
-    
-    if (_iter != _store.end()) {
-        result = *_iter;
-        ++_cnt;
+    auto log = [&]() {
 
-        Logger::writeLine("--------------------------");
         Logger::writeLine(*_iter._partition);
         Logger::writeLine(_iter._state);
-        Logger::writeLine("--------------------------");
+        Logger::writeLine();
 
-        ++_iter;
+    };
+
+    auto getNextForm = [&]() {
+
+        bool isPositive = false;
+
+        while (!isPositive) {
+            Logger::writeLine("==========================");
+            Logger::writeLine("Form № " + std::to_string(_cnt));
+            Logger::writeLine("==========================");
+    
+            if (_iter == _store.end()) {
+                _load();
+            }
+
+            result = *_iter;
+            ++_cnt;
+            log();
+            ++_iter;
+            isPositive = _isPositive(result);
+
+            if (!isPositive) {
+                Logger::writeLine("FORM IS NOT POSITIVE DEFINED");
+                Logger::writeLine();
+            }
+
+            Logger::writeLine(result);
+
+        }
+
+    };
+
+    if (_iter != _store.end()) {
+        getNextForm();
     }
     else {
         if (_partitions.empty()) {
@@ -44,20 +73,8 @@ ZZ_mat<mpz_t> PsiFormGenerator::getForm()
         }
 
         _load();
-
-        result = *_iter;
-        ++_cnt;
-
-        Logger::writeLine("--------------------------");
-        Logger::writeLine(*_iter._partition);
-        Logger::writeLine(_iter._state);
-        Logger::writeLine("--------------------------");
-
-        ++_iter;
+        getNextForm();
     }
-
-    Logger::writeLine(result);
-    Logger::writeLine("**************************");
 
     return result;
 
@@ -157,8 +174,88 @@ void PsiFormGenerator::test()
 
     for (auto psiForm : store) {
         std::cout << psiForm << std::endl;
-        //std::cin.get();
     }
+
+}
+
+bool PsiFormGenerator::_isValid(const std::vector<CoxeterFormCode> &state,
+const std::vector<int> &dim) noexcept
+{
+
+    unsigned long maxDelta = 0;
+    unsigned long extDelta = 0;
+    unsigned long curPos = 0;
+    bool extFound = false;
+
+    auto isExt = [](CoxeterFormCode code) -> bool {
+
+        if (code == FORM_A_ASTR || code == FORM_D_ASTR || code > FORM_E) {
+            return true;
+        }
+
+        return false;
+
+    };
+
+    /*if (dim.size() == 1 && isExt(state[0])) {
+        return false;
+    }*/
+
+    auto pred = [&](CoxeterFormCode code) -> bool {
+
+        if (!isExt(code)) {
+            auto curDelta = CoxeterFormGenerator::delta(code, dim[curPos]);
+            if (curDelta > maxDelta) {
+                maxDelta = curDelta;
+            }
+
+            if (extFound && maxDelta >= extDelta) {
+                ++curPos;
+                return false;
+            }
+        }
+        else {
+            if (extFound) {
+                ++curPos;
+                return false;
+            }
+
+            extFound = true;
+            extDelta = CoxeterFormGenerator::delta(code, dim[curPos]);
+
+            if (extDelta <= maxDelta) {
+                ++curPos;
+                return false;
+            }
+        }
+
+        ++curPos;
+
+        return true;
+
+    };
+
+    return std::all_of(state.begin(), state.end(), pred);
+
+}
+
+/* I have no idea what is rMatrix and why it works */
+bool PsiFormGenerator::_isPositive(ZZ_mat<mpz_t> A) const noexcept
+{
+
+    ZZ_mat<mpz_t> U;
+    ZZ_mat<mpz_t> UT;
+    MatGSOGram<Z_NR<mpz_t>, FP_NR<mpfr_t>> G(A, U, UT, 1);
+    G.update_gso();
+    auto rMatrix = G.get_r_matrix();
+
+    for (int i = 0; i < rMatrix.get_rows(); ++i) {
+        if (rMatrix[i][i] <= 0) {
+            return false;
+        }
+    }
+
+    return true;
 
 }
 
@@ -200,6 +297,8 @@ ZZ_mat<mpz_t> PsiFormGenerator::PsiFormIterator::operator*() const noexcept
         _glew(result, generator.getForm());
     }
 
+    _excludeVar(result);
+
     return result;
 
 }
@@ -207,7 +306,9 @@ ZZ_mat<mpz_t> PsiFormGenerator::PsiFormIterator::operator*() const noexcept
 PsiFormGenerator::PsiFormIterator& PsiFormGenerator::PsiFormIterator::operator++() noexcept
 {
 
-    _increaseComponet(0);
+    do {
+        _increaseComponet(0);
+    } while (!_isValid(_state, *_partition));
 
     if (_end) {
         for (auto &code : _state) {
@@ -291,7 +392,7 @@ void PsiFormGenerator::PsiFormIterator::_increaseComponet(unsigned long i)
 
 }
 
-void PsiFormGenerator::PsiFormIterator::_glew(ZZ_mat<mpz_t> &A, const ZZ_mat<mpz_t> &B) const noexcept
+ZZ_mat<mpz_t>& PsiFormGenerator::PsiFormIterator::_glew(ZZ_mat<mpz_t> &A, const ZZ_mat<mpz_t> &B) const noexcept
 {
 
     unsigned long oldRowsNum = A.get_rows();
@@ -306,6 +407,44 @@ void PsiFormGenerator::PsiFormIterator::_glew(ZZ_mat<mpz_t> &A, const ZZ_mat<mpz
             A[oldRowsNum + i][oldColsNum + j] = B[i][j];
         }
     }
+
+    return A;
+
+}
+
+/* x_{n + 1} = -x_1 - x_2 - ... - x_n */
+ZZ_mat<mpz_t>& PsiFormGenerator::PsiFormIterator::_excludeVar(ZZ_mat<mpz_t> &A) const noexcept
+{
+
+    int n = A.get_rows();
+
+    ZZ_mat<mpz_t> mat1;
+    mat1.resize(n - 1, n - 1);
+
+    for (int i = 0; i < mat1.get_rows(); ++i) {
+        for (int j = 0; j < mat1.get_cols(); ++j) {
+            mat1[i][j] = -A[i][n - 1] + (-A[j][n - 1]);
+        }
+    }
+
+    ZZ_mat<mpz_t> mat2;
+    mat2.resize(n - 1, n - 1);
+
+    for (int i = 0; i < mat2.get_rows(); ++i) {
+        for (int j = 0; j < mat2.get_cols(); ++j) {
+            if (i == j) {
+                mat2[i][j] = A[n - 1][n - 1];
+            }
+            else {
+                mat2[i][j] = A[n - 1][n - 1];
+            }
+        }
+    }
+
+    A.resize(n - 1, n - 1);
+    A = A + mat1 + mat2;
+
+    return A;
 
 }
 
