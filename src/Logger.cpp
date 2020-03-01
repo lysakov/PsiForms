@@ -1,37 +1,67 @@
 #include "Logger.hpp"
 
-bool Logger::_logOn = false;
 
-std::unique_ptr<std::ostream> Logger::_logFile = std::unique_ptr<std::ofstream>(nullptr);
+
+/******************************
+ * Logger methods realization *
+ ******************************/
+
+
 
 Logger::Logger()
-{}
-
-/* TODO: Error with stdout. Improve it */
-void Logger::init(const std::string &fileName)
 {
 
-    _logOn = true;
-
-    if (fileName == "stdout") {
-        _logFile = std::unique_ptr<std::ostream>(&std::cout);
-    }
-    else {
-        _logFile = std::make_unique<std::ofstream>(fileName);
-    }
+    _outputPtr = new std::ofstream("log.txt");
 
 }
 
-void Logger::logOn() noexcept
+Logger& Logger::getInstance()
 {
 
-    _logOn = true;
+    static Logger logger;
+
+    return logger;
 
 }
 
-void Logger::logOff() noexcept
+void Logger::setLogFile(const std::string &path)
 {
 
-    _logOn = false;
+    Logger &log = getInstance();
+
+    if (log._outputPtr != nullptr && typeid(*(log._outputPtr)) != typeid(std::cout)) {
+        delete log._outputPtr;
+    }
+
+    if (path == "stdout") {
+        log._outputPtr = &std::cout;
+    }
+    else
+    {
+        log._outputPtr = new std::ofstream(path);
+    }    
+
+}
+
+void Logger::setLevel(LogLevel level)
+{
+
+    Logger::getInstance()._level = level;
+
+}
+
+LogLevel Logger::getLevel()
+{
+
+    return Logger::getInstance()._level;
+
+}
+
+Logger::~Logger()
+{
+
+    if (_outputPtr != nullptr && typeid(*_outputPtr) != typeid(std::cout)) {
+        delete _outputPtr;
+    }
 
 }

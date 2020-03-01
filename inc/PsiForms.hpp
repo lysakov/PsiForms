@@ -5,6 +5,8 @@
 #include <stack>
 #include <vector>
 #include <algorithm>
+#include <mutex>
+
 #include "generator.hpp"
 #include "CoxeterForms.hpp"
 #include "iterator.hpp"
@@ -24,6 +26,12 @@ class PsiFormGenerator : public IGenerator
      * @returns psi form. */
     virtual ZZ_mat<mpz_t> getForm() override;
 
+    /* @brief Method returns psi form.
+     * @param state - vector of Coxeter forms
+     * dim - dimension of the given Coxeter forms
+     * @returns psi form. */
+    ZZ_mat<mpz_t> getForm(const std::vector<CoxeterFormCode> &state, const std::vector<int> &dim);
+
     /* @brief Method checks whether all psi forms are enumerated. *
      * @returns true, if all psi forms in given dimension are not enumerated. */
     bool empty() const noexcept override;
@@ -31,6 +39,15 @@ class PsiFormGenerator : public IGenerator
     /* @brief method counts number of generated psi forms
      * @returns number of created psi forms */
     unsigned long long count() const noexcept;
+
+    /* _isValid(...) checks whether psi form is valid*/
+    static bool _isValid(const std::vector<CoxeterFormCode> &state, const std::vector<int> &dim) noexcept;
+
+    /* _sufficiency(...) checks the sufficiency condition of psi form */
+    static bool _sufficiency(const std::vector<CoxeterFormCode> &state, const std::vector<int> &dim) noexcept;
+
+    /* _necessity(...) checks the necessity condition of psi form */
+    static bool _necessity(const std::vector<CoxeterFormCode> &state, const std::vector<int> &dim) noexcept;
 
     void test();
 
@@ -73,8 +90,11 @@ class PsiFormGenerator : public IGenerator
         * second - to B. */
         ZZ_mat<mpz_t>& _glew(ZZ_mat<mpz_t> &A, const ZZ_mat<mpz_t> &B) const noexcept;
 
-        /* _excludeVar(...) - excludes n + 1 - th  variable from form */
-        ZZ_mat<mpz_t>& _excludeVar(ZZ_mat<mpz_t> &A) const noexcept;
+        /* _excludeVar(...) - excludes n - th  variable from form */
+        ZZ_mat<mpz_t>& _excludeVar(ZZ_mat<mpz_t> &A, unsigned long n) const noexcept;
+
+        /* _isPositive(...) checks whether matrix A is positive defined. */
+        bool _isPositive(ZZ_mat<mpz_t> A) const noexcept;
 
     };
 
@@ -106,6 +126,9 @@ class PsiFormGenerator : public IGenerator
     /* Psi form counter */
     unsigned long long _cnt = 1;
 
+    /* Thread safety */
+    mutable std::mutex _mtx;
+
     /* Partition stack */
     std::vector<std::vector<int>> _partitions;
 
@@ -122,12 +145,6 @@ class PsiFormGenerator : public IGenerator
 
     /* _load() loads next partition in _store and sets _iter */
     void _load();
-
-    /* _isValid(...) checks whether psi form, corresponding to the given state vector, exists. */
-    static bool _isValid(const std::vector<CoxeterFormCode> &state, const std::vector<int> &dim) noexcept;
-
-    /* _isPositive(...) checks whether matrix A is positive defined. */
-    bool _isPositive(ZZ_mat<mpz_t> A) const noexcept;
 
 };
 

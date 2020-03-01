@@ -27,16 +27,23 @@ ${SOURCE_DIR}/enumerator.cpp
 ${SOURCE_DIR}/generator.cpp
 ${SOURCE_DIR}/CoxeterForms.cpp
 ${SOURCE_DIR}/Logger.cpp
-${SOURCE_DIR}/utils.cpp)
+${SOURCE_DIR}/utils.cpp
+${SOURCE_DIR}/ParallelWrapper.cpp)
 
 #Searching for libraries
 find_library(FPLLL_LIB fplll)
 find_library(GMP_LIB gmp)
 find_library(MPFR_LIB mpfr)
 
+#Searching for pthread lib
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+
 include_directories(${INCLUDE_DIR})
 add_executable(PsiForms ${SOURCE_FILES})
+
 target_link_libraries(PsiForms
 ${FPLLL_LIB}
 ${GMP_LIB}
-${MPFR_LIB})
+${MPFR_LIB}
+${CMAKE_THREAD_LIBS_INIT})

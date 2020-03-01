@@ -58,35 +58,35 @@ std::ostream& operator<<(std::ostream &str, const CoxeterFormCode &code)
 
     switch (code) {
     case FORM_A:
-        str << "A";
+        str << "a";
         break;
 
     case FORM_A_ASTR:
-        str << "A*";
+        str << "A";
         break;
 
     case FORM_D:
-        str << "D";
+        str << "d";
         break;
 
     case FORM_D_ASTR:
-        str << "D*";
+        str << "D";
         break;
 
     case FORM_E:
-        str << "E";
+        str << "e";
         break;
 
     case FORM_E7_ASTR:
-        str << "E*_7";
+        str << "E";
         break;
 
     case FORM_E8_ASTR:
-        str << "E*_8";
+        str << "E";
         break;
 
     case FORM_E9_ASTR:
-        str << "E*_9";
+        str << "E";
         break;
 
     default:
@@ -256,14 +256,14 @@ ZZ_mat<mpz_t> CoxeterFormGenerator::_getA(unsigned long n) const noexcept
 }
 
 
-/* A_{k}^{*}(x_1,..., x_k) = A_{k - 1}(x_1,...,x_{k - 1}) - x_1 * x_k, k >= 2 */
+/* A_{k}^{*}(x_1,..., x_k) = A_k(x_1,...,x_k) - x_1 * x_k, k >= 2 */
 ZZ_mat<mpz_t> CoxeterFormGenerator::_getAAstr(unsigned long n) const noexcept
 {
 
     auto result = _getA(n);
 
-    result[0][n - 1] = -1;
-    result[n - 1][0] = -1;
+    result[0][n - 1].sub_ui(result[0][n - 1], 1);
+    result[n - 1][0].sub_ui(result[n - 1][0], 1);
 
     return result;
 
@@ -358,8 +358,8 @@ ZZ_mat<mpz_t> CoxeterFormGenerator::_getE9(unsigned long n) const noexcept
     _extend(result);
 
     result[8][8] = 2;
-    result[7][8] = -1;
-    result[8][7] = -1;
+    result[6][8] = -1;
+    result[8][6] = -1;
 
     return result;
 

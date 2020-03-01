@@ -20,47 +20,25 @@ PsiFormGenerator::PsiFormGenerator(int n) : _n(n + 1), _store({}), _iter(nullptr
 
 }
 
-/* TODO: REFACTOR THIS FUNCTION */
 ZZ_mat<mpz_t> PsiFormGenerator::getForm()
 {
 
+    std::lock_guard<std::mutex> lock(_mtx);
+
     decltype(getForm()) result;
-
-    auto log = [&]() {
-
-        Logger::writeLine(*_iter._partition);
-        Logger::writeLine(_iter._state);
-        Logger::writeLine();
-
-    };
 
     auto getNextForm = [&]() {
 
-        bool isPositive = false;
-
-        while (!isPositive) {
-            Logger::writeLine("==========================");
-            Logger::writeLine("Form № " + std::to_string(_cnt));
-            Logger::writeLine("==========================");
+        Logger::debug("==========================");
+        Logger::debug("Form № " + std::to_string(_cnt));
+        Logger::debug("==========================");
     
-            if (_iter == _store.end()) {
-                _load();
-            }
+        result = *_iter;
 
-            result = *_iter;
-            ++_cnt;
-            log();
-            ++_iter;
-            isPositive = _isPositive(result);
+        Logger::debug(result);
 
-            if (!isPositive) {
-                Logger::writeLine("FORM IS NOT POSITIVE DEFINED");
-                Logger::writeLine();
-            }
-
-            Logger::writeLine(result);
-
-        }
+        ++_iter;
+        ++_cnt;
 
     };
 
@@ -68,20 +46,41 @@ ZZ_mat<mpz_t> PsiFormGenerator::getForm()
         getNextForm();
     }
     else {
-        if (_partitions.empty()) {
-            return result;
+        while (_iter == _store.end() && !_partitions.empty()) {
+            _load();
         }
 
-        _load();
-        getNextForm();
+        if (_partitions.empty() && _iter == _store.end()) {
+            return result;
+        }
+        else {
+            getNextForm();
+        }
     }
 
     return result;
 
 }
 
+ZZ_mat<mpz_t> PsiFormGenerator::getForm(const std::vector<CoxeterFormCode> &state, const std::vector<int> &dim)
+{
+
+    decltype(getForm()) result;
+    PsiFormStore store(dim);
+    auto iter = store.begin();
+
+    while (iter != PsiFormIterator(&dim, state)) {
+        ++iter;
+    }
+
+    return *iter;
+
+}
+
 bool PsiFormGenerator::empty() const noexcept
 {
+
+    std::lock_guard<std::mutex> lock(_mtx);
 
     return _partitions.empty() && _iter == _store.end();
 
@@ -89,6 +88,8 @@ bool PsiFormGenerator::empty() const noexcept
 
 unsigned long long PsiFormGenerator::count() const noexcept
 {
+
+    std::lock_guard<std::mutex> lock(_mtx);
 
     return _cnt;
 
@@ -128,6 +129,7 @@ void PsiFormGenerator::_decompose(std::vector<int> &partition, unsigned long min
 
 }
 
+/* TODO: use std::min_element */
 void PsiFormGenerator::_initStack() noexcept
 {
 
@@ -142,7 +144,9 @@ void PsiFormGenerator::_initStack() noexcept
     while(partition[0] != _n) {
 
         auto minPos = _findMin(partition);
+        //auto minPos = std::min_element(partition.begin(), --partition.end());
         ++partition[minPos];
+        //++(*minPos);
         --partition.back();
 
         if (partition.back() == 0) {
@@ -178,9 +182,11 @@ void PsiFormGenerator::test()
 
 }
 
-bool PsiFormGenerator::_isValid(const std::vector<CoxeterFormCode> &state,
+bool PsiFormGenerator::_necessity(const std::vector<CoxeterFormCode> &state,
 const std::vector<int> &dim) noexcept
 {
+
+    /****************** => *******************/
 
     unsigned long maxDelta = 0;
     unsigned long extDelta = 0;
@@ -196,10 +202,6 @@ const std::vector<int> &dim) noexcept
         return false;
 
     };
-
-    /*if (dim.size() == 1 && isExt(state[0])) {
-        return false;
-    }*/
 
     auto pred = [&](CoxeterFormCode code) -> bool {
 
@@ -237,25 +239,135 @@ const std::vector<int> &dim) noexcept
 
     return std::all_of(state.begin(), state.end(), pred);
 
+
 }
 
-/* I have no idea what is rMatrix and why it works */
-bool PsiFormGenerator::_isPositive(ZZ_mat<mpz_t> A) const noexcept
+/* WARNING: SHITCODE */
+/* TODO: REFACTOR THIS FUNCTION */
+bool PsiFormGenerator::_sufficiency(const std::vector<CoxeterFormCode> &state, 
+const std::vector<int> &dim) noexcept
 {
 
-    ZZ_mat<mpz_t> U;
-    ZZ_mat<mpz_t> UT;
-    MatGSOGram<Z_NR<mpz_t>, FP_NR<mpfr_t>> G(A, U, UT, 1);
-    G.update_gso();
-    auto rMatrix = G.get_r_matrix();
+    /****************** <= *******************/
 
-    for (int i = 0; i < rMatrix.get_rows(); ++i) {
-        if (rMatrix[i][i] <= 0) {
-            return false;
+    unsigned long curPos = 0;
+
+    /* Position of forms, which are different from A1 */
+    std::vector<unsigned long> positions;    
+    bool valid = false;
+
+    auto findSpecForms = [&](const CoxeterFormCode &code) {
+
+        if (code != FORM_A || dim[curPos] != 1) {
+            positions.push_back(curPos);
+        }
+
+        ++curPos;
+
+    };
+
+    std::for_each(state.begin(), state.end(), findSpecForms);
+
+    /* Consition 1 */
+    if (positions.size() >= 3) {
+        valid = true;
+    }
+
+    /* Condition 2 */
+    auto cond2A = [&](CoxeterFormCode code, int dimLowerBound) {
+
+        if (!valid && 
+            ((state[positions[0]] == code && dim[positions[0]] >= dimLowerBound) ||
+            (state[positions[1]] == code && dim[positions[1]] >= dimLowerBound))) {
+                valid = true;
+        }
+
+    };
+
+    auto cond2B = [&](CoxeterFormCode code1, CoxeterFormCode code2,
+    int dim1, int dim2) {
+
+        if (!valid && 
+        ((state[positions[0]] == code1 && dim[positions[0]] == dim1 && 
+        state[positions[1]] == code2 && dim[positions[1]] == dim2) ||
+        (state[positions[1]] == code1 && dim[positions[1]] == dim1 && 
+        state[positions[0]] == code2 && dim[positions[0]] == dim2))) {
+            valid = true;
+        }
+
+    };
+
+    if (!valid && positions.size() == 2) {
+        cond2A(FORM_A, 5);
+        cond2A(FORM_D, 6);
+        cond2A(FORM_E, 6);
+        cond2A(FORM_A_ASTR, 6);
+        cond2A(FORM_D_ASTR, 7);
+        cond2A(FORM_E7_ASTR, 7);
+        cond2A(FORM_E8_ASTR, 8);
+        cond2A(FORM_E9_ASTR, 9);
+
+        if (!valid) {
+            cond2B(FORM_D, FORM_D, 5, 4);
+            cond2B(FORM_D, FORM_D, 5, 5);
+            cond2B(FORM_D_ASTR, FORM_D, 5, 4);
+            cond2B(FORM_D_ASTR, FORM_D, 6, 4);
+            cond2B(FORM_D_ASTR, FORM_D, 6, 5);
+        }
+
+        if (!valid && state.size() >= 3) {
+            cond2B(FORM_A, FORM_A_ASTR, 2, 3);
+            cond2B(FORM_A, FORM_A_ASTR, 3, 4);
+            cond2B(FORM_A, FORM_A_ASTR, 4, 5);
         }
     }
 
-    return true;
+    /* Condition 3 */
+    auto cond3A = [&](CoxeterFormCode code, int dimLowerBound) {
+
+        if (!valid && state[positions[0]] == code && dim[positions[0]] >= dimLowerBound) {
+            valid = true;
+        }
+
+    };
+
+    auto cond3B = [&](CoxeterFormCode code, int dimBound) {
+
+        if (!valid && state[positions[0]] == code && dim[positions[0]] == dimBound) {
+            valid = true;
+        }
+
+    };
+
+    if (!valid && positions.size() == 1) {
+
+        cond3A(FORM_A, 8);
+        cond3A(FORM_A_ASTR, 7);
+        cond3A(FORM_D, 9);
+        cond3A(FORM_D_ASTR, 10);
+
+        cond3B(FORM_A_ASTR, 2);
+        cond3B(FORM_E8_ASTR, 8);
+        cond3B(FORM_E9_ASTR, 9);
+    }
+
+    /* Condition 4 */
+    if (!valid && positions.empty() && state.size() >= 2) {
+        valid = true;
+    }
+
+    return valid;
+
+}
+
+bool PsiFormGenerator::_isValid(const std::vector<CoxeterFormCode> &state, 
+const std::vector<int> &dim) noexcept {
+
+    if (!_necessity(state, dim)) {
+        return false;
+    }
+
+    return _sufficiency(state, dim);
 
 }
 
@@ -279,6 +391,10 @@ _partition(partition)
         _state.push_back(FORM_A);
     }
 
+    while (!_isValid(_state, *_partition) && !_end) {
+        ++(*this);
+    }
+
 }
 
 PsiFormGenerator::PsiFormIterator::PsiFormIterator(const std::vector<int> *partition, 
@@ -291,15 +407,38 @@ ZZ_mat<mpz_t> PsiFormGenerator::PsiFormIterator::operator*() const noexcept
 
     CoxeterFormGenerator generator(_state, *_partition);
 
-    ZZ_mat<mpz_t> result;
+    ZZ_mat<mpz_t> tmpResult;
 
     while (!generator.empty()) {
-        _glew(result, generator.getForm());
+        _glew(tmpResult, generator.getForm());
     }
 
-    _excludeVar(result);
+    Logger &logger = Logger::getInstance();
+    if (Logger::getLevel() <= LOG_INFO) {
+        for (unsigned long i = 0; i < _state.size(); ++i) {
+            logger << _state[i] << (*_partition)[i] << ' ';
+        }
+    }
 
-    return result;
+    Logger::writeLine(LOG_DEBUG);
+    Logger::writeLine(LOG_DEBUG);
+    Logger::debug(tmpResult);
+    Logger::debug("||");
+    Logger::debug("\\/");
+
+    //unsigned long varToBeExcl = tmpResult.get_rows();
+    //ZZ_mat<mpz_t> result;
+
+    /*do {
+        Logger::writeLine(varToBeExcl);
+        result = tmpResult;
+        _excludeVar(result, tmpResult.get_rows());
+        --varToBeExcl;
+    } while(!_isPositive(tmpResult) && varToBeExcl > 0);*/
+
+    _excludeVar(tmpResult, tmpResult.get_rows());
+
+    return tmpResult;
 
 }
 
@@ -308,7 +447,19 @@ PsiFormGenerator::PsiFormIterator& PsiFormGenerator::PsiFormIterator::operator++
 
     do {
         _increaseComponet(0);
-    } while (!_isValid(_state, *_partition));
+        /*if (!_isValid(_state, *_partition) && !_end) {
+            Logger::writeLine("--------------------------");
+            Logger::writeLine(*_partition);
+            Logger::writeLine(_state);
+            Logger::writeLine("NOT VALID :");
+            if (!_necessity(_state, *_partition)) {
+                Logger::writeLine("NECESSITY NOT MET");
+            }
+            else {
+                Logger::writeLine("SUFFICIENCY NOT MET");
+            }
+        }*/
+    } while (!_isValid(_state, *_partition) && !_end);
 
     if (_end) {
         for (auto &code : _state) {
@@ -413,38 +564,65 @@ ZZ_mat<mpz_t>& PsiFormGenerator::PsiFormIterator::_glew(ZZ_mat<mpz_t> &A, const 
 }
 
 /* x_{n + 1} = -x_1 - x_2 - ... - x_n */
-ZZ_mat<mpz_t>& PsiFormGenerator::PsiFormIterator::_excludeVar(ZZ_mat<mpz_t> &A) const noexcept
+ZZ_mat<mpz_t>& PsiFormGenerator::PsiFormIterator::_excludeVar(ZZ_mat<mpz_t> &A,
+unsigned long n) const noexcept
 {
 
-    int n = A.get_rows();
+    unsigned long dim = A.get_rows();
+
+    n = n;
+
+    /*if (n != dim) {
+        A.swap_rows(n - 1, dim - 1);
+
+        //No swap_columns? WTF?
+        for (unsigned long i = 0; i < dim; ++i) {
+            A[i][dim - 1].swap(A[i][n - 1]);
+        }
+    }*/
 
     ZZ_mat<mpz_t> mat1;
-    mat1.resize(n - 1, n - 1);
+    mat1.resize(dim - 1, dim - 1);
 
     for (int i = 0; i < mat1.get_rows(); ++i) {
         for (int j = 0; j < mat1.get_cols(); ++j) {
-            mat1[i][j] = -A[i][n - 1] + (-A[j][n - 1]);
+            mat1[i][j] = -A[i][dim - 1] + (-A[dim - 1][j]);
         }
     }
 
     ZZ_mat<mpz_t> mat2;
-    mat2.resize(n - 1, n - 1);
+    mat2.resize(dim - 1, dim - 1);
 
     for (int i = 0; i < mat2.get_rows(); ++i) {
         for (int j = 0; j < mat2.get_cols(); ++j) {
-            if (i == j) {
-                mat2[i][j] = A[n - 1][n - 1];
-            }
-            else {
-                mat2[i][j] = A[n - 1][n - 1];
-            }
+            mat2[i][j] = A[dim - 1][dim - 1];
         }
     }
 
-    A.resize(n - 1, n - 1);
+    A.resize(dim - 1, dim - 1);
     A = A + mat1 + mat2;
 
     return A;
+
+}
+
+/* I have no idea what is rMatrix and why it works */
+bool PsiFormGenerator::PsiFormIterator::_isPositive(ZZ_mat<mpz_t> A) const noexcept
+{
+
+    ZZ_mat<mpz_t> U;
+    ZZ_mat<mpz_t> UT;
+    MatGSOGram<Z_NR<mpz_t>, FP_NR<mpfr_t>> G(A, U, UT, 1);
+    G.update_gso();
+    auto rMatrix = G.get_r_matrix();
+
+    for (int i = 0; i < rMatrix.get_rows(); ++i) {
+        if (rMatrix[i][i] <= 0) {
+            return false;
+        }
+    }
+
+    return true;
 
 }
 
@@ -453,6 +631,7 @@ ZZ_mat<mpz_t>& PsiFormGenerator::PsiFormIterator::_excludeVar(ZZ_mat<mpz_t> &A) 
 /*********************************
  * PsiForm's methods realization *
  *********************************/
+
 
 
 PsiFormGenerator::PsiFormStore::PsiFormStore(const std::vector<int> &partition) noexcept :

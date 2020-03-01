@@ -14,6 +14,7 @@ class ISVPAlg
     virtual std::vector<std::vector<Z_NR<mpz_t>>> getAllShortestVectors(ZZ_mat<mpz_t> &A) = 0;
     virtual Z_NR<mpz_t> getSquaredLength(ZZ_mat<mpz_t> &A) = 0;
     virtual unsigned long getShortestVectorsNum(ZZ_mat<mpz_t> &A) = 0;
+    virtual std::shared_ptr<ISVPAlg> copy() const = 0;
 
 };
 
@@ -26,6 +27,7 @@ class BasisSVP : public ISVPAlg
     virtual std::vector<std::vector<Z_NR<mpz_t>>> getAllShortestVectors(ZZ_mat<mpz_t> &A) override;
     virtual Z_NR<mpz_t> getSquaredLength(ZZ_mat<mpz_t> &A) override;
     virtual unsigned long getShortestVectorsNum(ZZ_mat<mpz_t> &A) override;
+    virtual std::shared_ptr<ISVPAlg> copy() const override;
 
   private:
     std::vector<Z_NR<mpz_t>> _transformCoord(const std::vector<Z_NR<mpz_t>> &coord, const ZZ_mat<mpz_t> &A) noexcept;
@@ -41,6 +43,7 @@ class GramSVP : public ISVPAlg
     virtual std::vector<std::vector<Z_NR<mpz_t>>> getAllShortestVectors(ZZ_mat<mpz_t> &A) override;
     virtual Z_NR<mpz_t> getSquaredLength(ZZ_mat<mpz_t> &A) override;
     virtual unsigned long getShortestVectorsNum(ZZ_mat<mpz_t> &A) override;
+    virtual std::shared_ptr<ISVPAlg> copy() const override;
 
   private:
     ZZ_mat<mpz_t>& _LLL(ZZ_mat<mpz_t> &A);
@@ -51,7 +54,7 @@ class Enumerator
 {
 
   public:
-    Enumerator(const ZZ_mat<mpz_t> &A, const std::shared_ptr<ISVPAlg> &svpAlg);
+    Enumerator(const ZZ_mat<mpz_t> &A, std::shared_ptr<ISVPAlg> &&svpAlg);
     std::vector<Z_NR<mpz_t>> getShortestVector();
     std::vector<std::vector<Z_NR<mpz_t>>> getAllShortestVectors();
     Z_NR<mpz_t> getSquaredLength();

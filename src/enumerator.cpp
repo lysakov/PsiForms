@@ -44,6 +44,13 @@ unsigned long BasisSVP::getShortestVectorsNum(ZZ_mat<mpz_t> &A)
 
 }
 
+std::shared_ptr<ISVPAlg> BasisSVP::copy() const
+{
+
+    return std::make_shared<BasisSVP>(*this);
+
+}
+
 std::vector<Z_NR<mpz_t>> BasisSVP::_transformCoord(const std::vector<Z_NR<mpz_t>> &coord, const ZZ_mat<mpz_t> &A) noexcept
 {
 
@@ -86,7 +93,7 @@ std::vector<std::vector<Z_NR<mpz_t>>> GramSVP::getAllShortestVectors(ZZ_mat<mpz_
 
     decltype(getAllShortestVectors(A)) res;
     std::vector<double> solLength;
-    shortest_vectors(G, res, solLength, 3000, SVPM_PROVED, 0);
+    shortest_vectors(G, res, solLength, 3000, SVPM_PROVED, 0); //SEGFAULT on multiple threads
     return res;
 
 }
@@ -112,6 +119,13 @@ unsigned long GramSVP::getShortestVectorsNum(ZZ_mat<mpz_t> &A)
 
 }
 
+std::shared_ptr<ISVPAlg> GramSVP::copy() const
+{
+
+    return std::shared_ptr<GramSVP>(new GramSVP(*this));
+
+}
+
 ZZ_mat<mpz_t>& GramSVP::_LLL(ZZ_mat<mpz_t> &A)
 {
 
@@ -132,7 +146,7 @@ ZZ_mat<mpz_t>& GramSVP::_LLL(ZZ_mat<mpz_t> &A)
  * Enumerator method realization *
  *********************************/
 
-Enumerator::Enumerator(const ZZ_mat<mpz_t> &A, const std::shared_ptr<ISVPAlg> &svpAlg) : _A(A), _svpAlg(svpAlg)
+Enumerator::Enumerator(const ZZ_mat<mpz_t> &A, std::shared_ptr<ISVPAlg> &&svpAlg) : _A(A), _svpAlg(svpAlg)
 {}
 
 std::vector<Z_NR<mpz_t>> Enumerator::getShortestVector()
@@ -159,6 +173,7 @@ Z_NR<mpz_t> Enumerator::getSquaredLength()
 unsigned long Enumerator::getShortestVectorsNum()
 {
 
-    return _svpAlg->getShortestVectorsNum(_A);
+    auto list = _svpAlg->getAllShortestVectors(_A);
+    return list.size();
 
 }

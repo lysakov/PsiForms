@@ -1,27 +1,36 @@
 #include <iostream>
 #include <fplll.h>
+#include <mutex>
+#include <chrono>
 
 #include "PsiForms.hpp"
 #include "generator.hpp"
 #include "enumerator.hpp"
 #include "Logger.hpp"
 #include "utils.hpp"
+#include "ParallelWrapper.hpp"
 
 int main()
 {
 
-    PsiFormGenerator gen(15);
+    //Logger::setLogFile("stdout");
+    Logger::setLevel(LOG_INFO);
 
-    Logger::init();
+    for (int i = 3; i < 11; ++i) {
+        auto start = std::chrono::high_resolution_clock::now();
 
-    while (!gen.empty()) {
-        Enumerator enumerator(gen.getForm(), std::make_shared<GramSVP>());
-        std::cout << enumerator.getShortestVectorsNum() << std::endl;
+        Logger::info("*************" + std::string(i > 8 ? "*" : ""));
+        Logger::info("* n + 1 = " + std::to_string(i + 1) + " *");
+        Logger::info("*************" + std::string(i > 8 ? "*" : ""));
+
+        ParallelWrapper wrapper(std::make_shared<PsiFormGenerator>(i), std::make_shared<GramSVP>(), 1);
+        std::cout << i << ")" << wrapper.execute() << std::endl;
+        Logger::writeLine();
+
+        auto finish = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed = finish - start;
+        std::cout << elapsed.count() << std::endl;
     }
-
-    Logger::writeLine("**************************");
-    Logger::writeLine("Total: " + std::to_string(gen.count()) + " psi forms");
-    Logger::writeLine("**************************");
 
     return 0;
 
