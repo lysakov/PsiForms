@@ -90,3 +90,31 @@ Z_NR<mpz_t> squaredNorm(const std::vector<Z_NR<mpz_t>> &x)
     return dot(x, x);
 
 }
+
+std::shared_ptr<std::map<Z_NR<mpz_t>, int>>
+createWeightSet(const std::vector<std::vector<Z_NR<mpz_t>>> &solutions)
+{
+    
+    auto result = std::make_shared<std::map<Z_NR<mpz_t>, int>>();
+
+    for (const auto &sol : solutions) {
+        auto op = [] (Z_NR<mpz_t> x, Z_NR<mpz_t> y) -> Z_NR<mpz_t> {
+            
+            x.abs(x);
+            y.abs(y);
+            
+            return x + y;
+
+        };
+        auto weight = std::accumulate(sol.begin(), sol.end(), Z_NR<mpz_t>(), op);
+        if (!result->count(weight)) {
+            result->insert(std::make_pair(weight, 1));
+        }
+        else {
+            (result->find(weight))->second += 1;
+        }
+    }
+
+    return result;
+
+}

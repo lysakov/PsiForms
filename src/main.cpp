@@ -16,6 +16,34 @@ int main()
     //Logger::setLogFile("stdout");
     Logger::setLevel(LOG_INFO);
 
+    CoxeterFormGenerator generator({FORM_D, FORM_D, FORM_D, FORM_D, FORM_D, FORM_D}, {18, 19, 20, 21, 22, 23});
+
+    while (!generator.empty()) {
+        Enumerator enumerator(generator.getForm(), std::make_shared<GramSVP>());
+        auto svpSols = enumerator.getAllShortestVectors();
+        //for (const auto &sol : svpSols) {
+            //std::cout << sol << std::endl;
+            //std::cout << "*********************" << std::endl;
+        //}
+        auto weight = createWeightSet(svpSols);
+
+        for (const auto &pair : *weight) {
+            std::cout << pair.first << " - " << pair.second << std::endl;
+        }
+        std::cout << "*********************" << std::endl;
+    }
+
+    //CoxeterFormGenerator generator({FORM_A}, {8});
+    //Enumerator enumerator(PsiFormGenerator::excludeVar(generator.getForm()), std::make_shared<GramSVP>());
+    //auto svpSols = enumerator.getAllShortestVectors();
+    //int cnt = 1;
+    //for (const auto &sol : svpSols) {
+        //std::cout << cnt << ") " << sol << std::endl;
+        //++cnt;
+        //std::cout << "*********************" << std::endl;
+    //}
+    
+
     for (int i = 3; i < 11; ++i) {
         auto start = std::chrono::high_resolution_clock::now();
 

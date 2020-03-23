@@ -93,7 +93,7 @@ std::vector<std::vector<Z_NR<mpz_t>>> GramSVP::getAllShortestVectors(ZZ_mat<mpz_
 
     decltype(getAllShortestVectors(A)) res;
     std::vector<double> solLength;
-    shortest_vectors(G, res, solLength, 3000, SVPM_PROVED, 0); //SEGFAULT on multiple threads
+    shortest_vectors(G, res, solLength, 50000, SVPM_PROVED, 0); //SEGFAULT on multiple threads
     return res;
 
 }

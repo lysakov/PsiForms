@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.5)
 
 #Target name
 project(PsiForms)
+project(util)
 
 #C++ standart
 set(CMAKE_CXX_STANDART 17)
@@ -21,14 +22,20 @@ src)
 
 #Setting up source files for target
 set(SOURCE_FILES
-${SOURCE_DIR}/main.cpp
 ${SOURCE_DIR}/PsiForms.cpp
 ${SOURCE_DIR}/enumerator.cpp
 ${SOURCE_DIR}/generator.cpp
 ${SOURCE_DIR}/CoxeterForms.cpp
 ${SOURCE_DIR}/Logger.cpp
-${SOURCE_DIR}/utils.cpp
+${SOURCE_DIR}/utils.cpp)
+
+set(MAIN_SRC
+${SOURCE_DIR}/main.cpp
 ${SOURCE_DIR}/ParallelWrapper.cpp)
+
+set(UTIL_SRC
+${SOURCE_DIR}/PsiFormUtil.cpp
+${SOURCE_DIR}/Parser.cpp)
 
 #Searching for libraries
 find_library(FPLLL_LIB fplll)
@@ -40,9 +47,17 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
 include_directories(${INCLUDE_DIR})
-add_executable(PsiForms ${SOURCE_FILES})
+add_executable(PsiForms ${SOURCE_FILES} ${MAIN_SRC})
+
+add_executable(util ${SOURCE_FILES} ${UTIL_SRC})
 
 target_link_libraries(PsiForms
+${FPLLL_LIB}
+${GMP_LIB}
+${MPFR_LIB}
+${CMAKE_THREAD_LIBS_INIT})
+
+target_link_libraries(util
 ${FPLLL_LIB}
 ${GMP_LIB}
 ${MPFR_LIB}

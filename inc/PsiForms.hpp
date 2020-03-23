@@ -26,11 +26,21 @@ class PsiFormGenerator : public IGenerator
      * @returns psi form. */
     virtual ZZ_mat<mpz_t> getForm() override;
 
-    /* @brief Method returns psi form.
+    /** 
+     * @brief Method returns perfect psi form.
      * @param state - vector of Coxeter forms
      * dim - dimension of the given Coxeter forms
-     * @returns psi form. */
-    ZZ_mat<mpz_t> getForm(const std::vector<CoxeterFormCode> &state, const std::vector<int> &dim);
+     * @returns psi form. 
+     */
+    static ZZ_mat<mpz_t> getPerfectForm(const std::vector<CoxeterFormCode> &state, const std::vector<int> &dim);
+
+    /** 
+     * @brief Method returns psi form.
+     * @param state - vector of Coxeter forms
+     * dim - dimension of the given Coxeter forms
+     * @returns psi form. 
+     */
+    static ZZ_mat<mpz_t> getForm(const std::vector<CoxeterFormCode> &state, const std::vector<int> &dim);
 
     /* @brief Method checks whether all psi forms are enumerated. *
      * @returns true, if all psi forms in given dimension are not enumerated. */
@@ -48,6 +58,13 @@ class PsiFormGenerator : public IGenerator
 
     /* _necessity(...) checks the necessity condition of psi form */
     static bool _necessity(const std::vector<CoxeterFormCode> &state, const std::vector<int> &dim) noexcept;
+
+    /**
+     * @brief excludes last varialble from the form
+     * @param A - matrix of the form
+     * @return modified matrix
+     */
+    static ZZ_mat<mpz_t> excludeVar(ZZ_mat<mpz_t> A) noexcept;
 
     void test();
 
@@ -71,6 +88,15 @@ class PsiFormGenerator : public IGenerator
 
         bool operator!=(const PsiFormIterator &iter) const noexcept;
 
+        /* excludeVar(...) - excludes n - th  variable from form */
+        static ZZ_mat<mpz_t>& excludeVar(ZZ_mat<mpz_t> &A, unsigned long n) noexcept;
+
+        /* _glew(...) - creates block diagonal matrix, where first block corresponds to A and
+        * second - to B. */
+        static ZZ_mat<mpz_t>& glew(ZZ_mat<mpz_t> &A, const ZZ_mat<mpz_t> &B) noexcept;
+
+
+
       private:
 
         std::vector<CoxeterFormCode> _state;
@@ -85,13 +111,6 @@ class PsiFormGenerator : public IGenerator
 
         /* Increases i-th component of vector _state */
         void _increaseComponet(unsigned long i);
-
-        /* _glew(...) - creates block diagonal matrix, where first block corresponds to A and
-        * second - to B. */
-        ZZ_mat<mpz_t>& _glew(ZZ_mat<mpz_t> &A, const ZZ_mat<mpz_t> &B) const noexcept;
-
-        /* _excludeVar(...) - excludes n - th  variable from form */
-        ZZ_mat<mpz_t>& _excludeVar(ZZ_mat<mpz_t> &A, unsigned long n) const noexcept;
 
         /* _isPositive(...) checks whether matrix A is positive defined. */
         bool _isPositive(ZZ_mat<mpz_t> A) const noexcept;

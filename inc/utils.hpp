@@ -50,4 +50,12 @@ Z_NR<mpz_t> dot(const std::vector<Z_NR<mpz_t>> &x, const std::vector<Z_NR<mpz_t>
  * @returns squared vector's norm */
 Z_NR<mpz_t> squaredNorm(const std::vector<Z_NR<mpz_t>> &x);
 
+/**
+ * @brief creates sum of components - number of vectors set
+ * @param solutions - svp solutions
+ * @return pointer to the set
+ */
+std::shared_ptr<std::map<Z_NR<mpz_t>, int>>
+createWeightSet(const std::vector<std::vector<Z_NR<mpz_t>>> &solutions);
+
 #endif

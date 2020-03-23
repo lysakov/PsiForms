@@ -62,10 +62,38 @@ ZZ_mat<mpz_t> PsiFormGenerator::getForm()
 
 }
 
-ZZ_mat<mpz_t> PsiFormGenerator::getForm(const std::vector<CoxeterFormCode> &state, const std::vector<int> &dim)
+ZZ_mat<mpz_t> PsiFormGenerator::getPerfectForm(const std::vector<CoxeterFormCode> &state, const std::vector<int> &dim)
 {
 
-    decltype(getForm()) result;
+    if (state.size() != dim.size()) {
+        throw std::invalid_argument("Sive of state vector and size of partition don't match");
+    }
+
+    for (unsigned long i = 0; i < state.size(); ++i) {
+        if (state[i] == FORM_D && dim[i] < 4) {
+            throw std::invalid_argument("Form d" + std::to_string(dim[i]) + " doesn't exist.");
+        }
+
+        if (state[i] == FORM_D_ASTR && dim[i] < 5) {
+            throw std::invalid_argument("Form D" + std::to_string(dim[i]) + " doesn't exist.");
+        }
+
+        if (state[i] == FORM_E && (dim[i] < 6 || dim[i] > 8) ) {
+            throw std::invalid_argument("Form e" + std::to_string(dim[i]) + " doesn't exist.");
+        }
+
+        if ((state[i] == FORM_E7_ASTR && dim[i] != 7) || (state[i] == FORM_E8_ASTR && dim[i] != 8) ||
+            (state[i] == FORM_E9_ASTR && dim[i] != 9))
+        {
+            throw std::invalid_argument("Form E" + std::to_string(dim[i]) + " doesn't exist.");
+        }
+    }
+
+    if (!_isValid(state, dim)) {
+        throw std::invalid_argument("Form is not perfect.");
+    }
+
+    decltype(getPerfectForm(state, dim)) result;
     PsiFormStore store(dim);
     auto iter = store.begin();
 
@@ -74,6 +102,20 @@ ZZ_mat<mpz_t> PsiFormGenerator::getForm(const std::vector<CoxeterFormCode> &stat
     }
 
     return *iter;
+
+}
+
+ZZ_mat<mpz_t> PsiFormGenerator::getForm(const std::vector<CoxeterFormCode> &state, const std::vector<int> &dim)
+{
+
+    CoxeterFormGenerator generator(state, dim);
+    ZZ_mat<mpz_t> result;
+
+    while (!generator.empty()) {
+        PsiFormIterator::glew(result, generator.getForm());
+    }
+
+    return PsiFormIterator::excludeVar(result, result.get_rows());
 
 }
 
@@ -92,6 +134,13 @@ unsigned long long PsiFormGenerator::count() const noexcept
     std::lock_guard<std::mutex> lock(_mtx);
 
     return _cnt;
+
+}
+
+ZZ_mat<mpz_t> PsiFormGenerator::excludeVar(ZZ_mat<mpz_t> A) noexcept
+{
+
+    return PsiFormIterator::excludeVar(A, A.get_cols());
 
 }
 
@@ -410,7 +459,7 @@ ZZ_mat<mpz_t> PsiFormGenerator::PsiFormIterator::operator*() const noexcept
     ZZ_mat<mpz_t> tmpResult;
 
     while (!generator.empty()) {
-        _glew(tmpResult, generator.getForm());
+        glew(tmpResult, generator.getForm());
     }
 
     Logger &logger = Logger::getInstance();
@@ -436,7 +485,7 @@ ZZ_mat<mpz_t> PsiFormGenerator::PsiFormIterator::operator*() const noexcept
         --varToBeExcl;
     } while(!_isPositive(tmpResult) && varToBeExcl > 0);*/
 
-    _excludeVar(tmpResult, tmpResult.get_rows());
+    excludeVar(tmpResult, tmpResult.get_rows());
 
     return tmpResult;
 
@@ -543,7 +592,7 @@ void PsiFormGenerator::PsiFormIterator::_increaseComponet(unsigned long i)
 
 }
 
-ZZ_mat<mpz_t>& PsiFormGenerator::PsiFormIterator::_glew(ZZ_mat<mpz_t> &A, const ZZ_mat<mpz_t> &B) const noexcept
+ZZ_mat<mpz_t>& PsiFormGenerator::PsiFormIterator::glew(ZZ_mat<mpz_t> &A, const ZZ_mat<mpz_t> &B) noexcept
 {
 
     unsigned long oldRowsNum = A.get_rows();
@@ -564,8 +613,8 @@ ZZ_mat<mpz_t>& PsiFormGenerator::PsiFormIterator::_glew(ZZ_mat<mpz_t> &A, const 
 }
 
 /* x_{n + 1} = -x_1 - x_2 - ... - x_n */
-ZZ_mat<mpz_t>& PsiFormGenerator::PsiFormIterator::_excludeVar(ZZ_mat<mpz_t> &A,
-unsigned long n) const noexcept
+ZZ_mat<mpz_t>& PsiFormGenerator::PsiFormIterator::excludeVar(ZZ_mat<mpz_t> &A,
+unsigned long n) noexcept
 {
 
     unsigned long dim = A.get_rows();
